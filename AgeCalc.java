@@ -1,5 +1,3 @@
-package demos;
-
 import javafx.application.*;
 import javafx.stage.*;
 import javafx.scene.*;
