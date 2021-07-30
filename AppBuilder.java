@@ -94,7 +94,7 @@ public class AppBuilder extends Application {
         stage.show();
     }
 
-    // Replace "String" below with the object type that populates the ComboBox
+    // Replace "String" below with the object type that will populate the ComboBox
     private final ObservableList<String> items = FXCollections.observableArrayList();
     private final ComboBox<String> list = new ComboBox<>(items);
 
