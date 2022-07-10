@@ -1,3 +1,5 @@
+package us.codefun;
+
 import javafx.application.*;
 import javafx.stage.*;
 import javafx.scene.*;
@@ -11,15 +13,17 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.*;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
+import java.time.*;
+import java.text.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static java.util.Collections.sort;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 
 public class AppBuilder extends Application {
 
@@ -38,16 +42,16 @@ public class AppBuilder extends Application {
     private final SecureRandom random = new SecureRandom();
     private final Label instructions = new Label();
 
+    // form variables declared
     private String appTitle;
     private Label[] labels;
     private TextField[] fields;
-    private String[] prompts;
     private int rows;
     private int nextRow;
 
     private int outputCount;
 
-    private HBox buttonBox = new HBox(10);
+    private final HBox buttonBox = new HBox(10);
 
     private Parent createContent() {
         root.setPrefSize(800, 600);
@@ -61,21 +65,33 @@ public class AppBuilder extends Application {
                 -fx-font-weight: bold;
                 -fx-font-size: 18;
                 """);
-        runBtn.setOnAction(e -> run());
+        runBtn.setOnAction(e -> {
+            try {
+                run();
+            } catch (Exception ex) {
+                println(ex);
+            }
+        });
         clearBtn.setOnAction(e -> clearOutput());
         printBtn.setOnAction(
-            e -> {
-                content.putString(display.getText());
-                clipboard.setContent(content);
-                String filename = appTitle + ".txt";
-                try {
-                    writeToFile(display.getText(), new File(filename));
-                    getHostServices().showDocument(filename);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            });
-        buttonBox.getChildren().addAll(runBtn, clearBtn, printBtn, list);
+                e -> {
+                    content.putString(display.getText());
+                    clipboard.setContent(content);
+                    String filename = appTitle + ".txt";
+                    try {
+                        writeToFile(display.getText(), new File(filename));
+                        getHostServices().showDocument(filename);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+        sel.setOnAction(e -> {
+            if (sel.getValue().isBlank())
+                return;
+            root.setStyle("-fx-background-color:%s".formatted(sel.getValue()));
+        });
+
+        buttonBox.getChildren().addAll(runBtn, clearBtn, printBtn, sel);
 
         root.setTop(form);
         root.setCenter(display);
@@ -85,8 +101,11 @@ public class AppBuilder extends Application {
 
     @Override
     public void start(Stage stage) {
-        setup();
-        createForm(prompts);
+        try {
+            setup();
+        } catch (Exception e) {
+            println(e);
+        }
         form.add(buttonBox, 1, nextRow++);
         stage.setTitle(appTitle);
         Scene scene = new Scene(createContent());
@@ -94,26 +113,31 @@ public class AppBuilder extends Application {
         stage.show();
     }
 
-    // Replace "String" below with the object type that will populate the ComboBox
-    private final ObservableList<String> items = FXCollections.observableArrayList();
-    private final ComboBox<String> list = new ComboBox<>(items);
+    // Replace "String" below with the object type that populates the ComboBox
+    private final ObservableList<String> obl = FXCollections.observableArrayList();
+    private final ComboBox<String> sel = new ComboBox<>(obl);
 
-    private void setup() {
-        setFormInstructions("");
-        // Send comma-separated strings to the method below:
-        setFormPrompts();
-
+    private void setup() throws Exception {
         appTitle = "App";
+        setFormInstructions("");
 
-        items.add("Example only");
+        // Send comma-separated strings to the method below to generate data entry form:
+        setFormPrompts("Enter your name");
+
+        // see complete list of javafx named colors
+        // at https://openjfx.io/javadoc/18/javafx.graphics/javafx/scene/doc-files/cssref.html
+        obl.addAll("whitesmoke","lightgray","azure","beige","green","cyan");
     } // end setup
 
-    public void run() {
-        // your code goes here
-
+    public void run() throws Exception {
+        String name = getField(0);
+        outputln(name);
     } // end run
 
     // helper methods can go here
+    private String getType(Object o) {
+        return o.getClass().getSimpleName();
+    }
 
     private Optional<String> getDialogText(String prompt) {
         var dialog = new TextInputDialog();
@@ -127,19 +151,46 @@ public class AppBuilder extends Application {
         return text.orElse("");
     }
 
+    private int inputInt(String prompt) {
+        try {
+            return Integer.parseInt(input(prompt));
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private double inputDouble(String prompt) {
+        try {
+            return Double.parseDouble(input(prompt));
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private char inputChar(String prompt) {
+        try {
+            return input(prompt).charAt(0);
+        } catch (Exception e) {
+            return '.';
+        }
+    }
+
     private String[] getLinesFromFile(String fileName) {
-        var lines = listFromFile(fileName, false);
+        var lines = readListFromFile(fileName);
         return lines.toArray(new String[0]);
     }
 
-    public List<String> listFromFile(String fileName, boolean sorted) {
-        List<String> lines = new ArrayList<>();
-        try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
-            lines = stream.collect(toList());
+    private ArrayList<String> readListFromFile(String fileName) {
+        var lines = new ArrayList<String>();
+        Scanner reader = null;
+        try {
+            reader = new Scanner(new File(fileName));
+            while (reader.hasNextLine()) lines.add(reader.nextLine());
         } catch (IOException e) {
-            e.printStackTrace();
+            showMessage(e.getMessage());
         }
-        if(sorted) sort(lines);
+        if (reader != null) reader.close();
+        print("Lines read: " + lines.size());
         return lines;
     }
 
@@ -151,6 +202,14 @@ public class AppBuilder extends Application {
         }
     }
 
+    private String insertLineBreaks(String text, int max) {
+        var sb = new StringBuilder(text);
+        int i = 0;
+        while ((i = sb.indexOf(" ", i + max)) != -1)
+            sb.replace(i, i + 1, "\n");
+        return sb.toString();
+    }
+
     private void showMessage(String message) {
         var alert = new Alert(AlertType.INFORMATION, message);
         alert.showAndWait();
@@ -158,14 +217,16 @@ public class AppBuilder extends Application {
 
     private void output(Object value) {
         var stringValue = String.valueOf(value);
-        if (stringValue.equals("")) return;
+        if (stringValue.equals(""))
+            return;
         output.append(stringValue);
         updateOutput();
     }
 
     private void outputln(Object value) {
         var stringValue = String.valueOf(value);
-        if (stringValue.equals("")) return;
+        if (stringValue.equals(""))
+            return;
         output.append(stringValue).append("\n");
         updateOutput();
     }
@@ -186,40 +247,40 @@ public class AppBuilder extends Application {
         display.setText(output.toString());
     }
 
-    public void clear() {
+    private void clear() {
         for (var field : fields)
             field.setText("");
     }
 
-    public void clearField(int index) {
+    private void clearField(int index) {
         if (isValidIndex(index))
             fields[index].setText("");
     }
 
-    public TextField getTextField(int index) {
+    private TextField getTextField(int index) {
         return isValidIndex(index) ? fields[index] : null;
     }
 
-    public String getField(int index) {
+    private String getField(int index) {
         return isValidIndex(index) ? fields[index].getText() : "";
     }
 
-    public void setField(int index, String value) {
+    private void setField(int index, String value) {
         if (isValidIndex(index))
             fields[index].setText(value);
     }
 
-    public void setLabel(int index, String value) {
+    private void setLabel(int index, String value) {
         if (isValidIndex(index))
             labels[index].setText(value);
     }
 
-    public void setFormInstructions(String value) {
+    private void setFormInstructions(String value) {
         instructions.setText(value);
     }
 
     private void setFormPrompts(String... prompts) {
-        this.prompts = prompts;
+        createForm(prompts);
     }
 
     private boolean isValidIndex(int index) {
@@ -283,3 +344,4 @@ public class AppBuilder extends Application {
         launch(args);
     } // end main
 } // end class
+
