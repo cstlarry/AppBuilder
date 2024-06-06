@@ -19,7 +19,6 @@ import java.text.*;
 import java.time.*;
 import java.util.*;
 
-import static java.util.FormatProcessor.FMT;
 /**
  * This class is intended to be an IDE Template that can be selected from the
  * IDE menu such that the user is prompted to change the class name fitting
@@ -35,11 +34,11 @@ public class AppBuilder extends Application {
     private static final int CANVAS_HEIGHT = 600;
     private static final int OUTPUT_FONT_SIZE = 16;
     private static final int DEFAULT_PADDING = 10;
-    private static final String STYLE = STR."""
+    private static final String STYLE = """
                 -fx-font-family: monospace;
                 -fx-font-weight: bold;
-                -fx-font-size: \{OUTPUT_FONT_SIZE};
-                """;
+                -fx-font-size: %s;
+                """.formatted(OUTPUT_FONT_SIZE);
     private final HBox buttonBox = new HBox(DEFAULT_PADDING);
     private final VBox controls = new VBox(DEFAULT_PADDING);
 
@@ -73,34 +72,6 @@ public class AppBuilder extends Application {
     private int rows;
     private int nextRow;
 
-    /**
-     * Constructs and returns a Parent node populated with UI components
-     * for the application. The UI includes a TextArea for display, various
-     * buttons for actions like running a process, clearing the output,
-     * printing content, opening and saving files, and a ComboBox for selecting
-     * options. Each component is styled and configured with event handlers
-     * to perform its respective action.
-     *
-     * <p>The layout consists of:
-     * <ul>
-     *     <li>A top section with forms.</li>
-     *     <li>A center section with a TextArea for display.</li>
-     *     <li>A bottom section with a status bar.</li>
-     *     <li>A button box containing all operational buttons.</li>
-     * </ul>
-     *
-     * <p>Actions include:
-     * <ul>
-     *     <li>Running a process.</li>
-     *     <li>Clearing the display output.</li>
-     *     <li>Copying and saving the display text to a file.</li>
-     *     <li>Opening a file with a FileChooser and displaying its content.</li>
-     *     <li>Saving the current display content to a file.</li>
-     *     <li>Updating the console based on the selected item in the ComboBox.</li>
-     * </ul>
-     *
-     * @return the root node containing all the UI elements.
-     */
     private Parent createContent() {
         root.setPrefSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         root.setPadding(new Insets(DEFAULT_PADDING));
@@ -122,7 +93,7 @@ public class AppBuilder extends Application {
                 e -> {
                     content.putString(display.getText());
                     clipboard.setContent(content);
-                    String filename = STR."\{appTitle}.txt";
+                    String filename = appTitle + ".txt";
                     try {
                         writeToFile(display.getText(), new File(filename));
                         getHostServices().showDocument(filename);
@@ -140,7 +111,7 @@ public class AppBuilder extends Application {
             filer.getExtensionFilters().add(extFilter);
             file = filer.showOpenDialog(stage);
             if (file != null) {
-                status.setText(STR."\{file.getAbsolutePath()}  selected");
+                status.setText(file.getAbsolutePath() + " selected");
                 readFileToDisplay(file);
             }
         });
@@ -162,17 +133,6 @@ public class AppBuilder extends Application {
         return root;
     } // end createContent()
 
-    /**
-     * Initializes and displays the application's main stage. This method is
-     * called when the application is launched. The setup method is invoked
-     * to configure initial settings and components. If an exception occurs
-     * during setup, it is caught and printed. Controls are added to the form,
-     * and the stage is set up with a title, a new scene containing the
-     * content created by {@code createContent()}, and finally displayed.
-     *
-     * @param stage The primary stage for this application, onto which the
-     *              scene and other elements are set.
-     */
     @Override
     public void start(Stage stage) {
         try {
@@ -187,35 +147,10 @@ public class AppBuilder extends Application {
         stage.setScene(scene);
         stage.show();
     }
-    /**
-     * An {@code ObservableList} that holds elements of type String, which are
-     * used to populate the combo box in the application. This list is observable,
-     * meaning it can be watched for changes, which helps in updating the UI
-     * dynamically whenever items are added or removed. Replace "String" with
-     * the object type that populates the ComboBox
-     */
+
     private final ObservableList<String> obl = FXCollections.observableArrayList();
-    /**
-     * A {@code ComboBox} widget that displays a dropdown list of strings
-     * to the user. It is backed by {@code obl}, the observable list of
-     * strings, ensuring that any updates to {@code obl} are immediately
-     * reflected in the choices available in the combo box.
-     */
     private final ComboBox<String> sel = new ComboBox<>(obl);
-    /**
-     * Configures the initial settings for the application. This method sets
-     * up the application's title, data entry form, form instructions, and
-     * combo box items. It is designed to be called at the beginning of the
-     * application's lifecycle to prepare the user interface components.
-     *
-     * The method sets the application's title to "Hello App". It creates
-     * a form for data entry with fields for "Name" and "Age". If fields
-     * are present, it sets instructions for form completion. Additionally,
-     * it populates a combo box with example items and selects the first
-     * item as default.
-     *
-     * @throws Exception If an error occurs during the setup process.
-     */
+
     private void setup() throws Exception {
         appTitle = "Hello App";
         // Send comma-separated strings to the method below to generate data entry form:
@@ -227,26 +162,11 @@ public class AppBuilder extends Application {
         obl.addAll("item 1","item 2","item 3");
         sel.getSelectionModel().selectFirst();
     } // end setup
-    /**
-     * The instructions in this method are just samples.  Normally these lines
-     * would be removed. This method Executes the primary functionality of the
-     * application by retrieving user input and generating an output message.
-     * This method fetches data entered by the user into predefined fields:
-     * the first field (index 0) for the name, and the second field (index 1)
-     * for the age. It parses the age input as an integer and constructs a
-     * greeting message that includes the entered name, age, and the current
-     * date. This message is then output to the application's display.
-     * If any errors occur during data fetching or processing, such as a
-     * number format exception when parsing the age, an exception is thrown.
-     *
-     * @throws Exception If there is an error in retrieving fields or
-     *      parsing them, an exception is thrown to indicate
-     *      such errors (e.g., {@link NumberFormatException} for age parsing).
-     */
+
     private void run() throws Exception {
         String name = getField(0);
         int age = Integer.parseInt(getField(1));
-        outputln(FMT."Hello \{name}. You are \{age} years old.  Todays date is \{LocalDate.now()}");
+        outputln(String.format("Hello %s. You are %d years old.  Todays date is %s",name, age, LocalDate.now()));
     } // end run
 
     // helper methods can go here
@@ -255,7 +175,7 @@ public class AppBuilder extends Application {
     }
 
     private void showJsonInBrowser(String json) {
-        String jsonViewer = STR."https://codebeautify.org/jsonviewer?input=\{json}";
+        String jsonViewer = "https://codebeautify.org/jsonviewer?input=" + json;
         println(jsonViewer);
         getHostServices().showDocument(jsonViewer);
     }
@@ -267,13 +187,20 @@ public class AppBuilder extends Application {
      *
      * @param prompt The header text displayed at the top of the dialog to prompt the user for input.
      * @return An {@code Optional<String>} containing the text entered by the user. If the user closes the dialog without
-     *         entering text, the {@code Optional} is empty.
+     *         entering text, the {@code Optional} is empty.  If the OK button is pressed but the input
+     *         is empty then the String "Blank" will be returned.  If the CANCEL button is pressed with
+     *         no input then the String "Cancel" will be returned.
      */
     private Optional<String> getDialogText(String prompt) {
         var dialog = new TextInputDialog();
         dialog.setTitle("Dialog");
         dialog.setHeaderText(prompt);
-        return dialog.showAndWait();
+        Optional<String> result = dialog.showAndWait();
+
+        if (result.isPresent()) {
+            String input = result.get();
+            return input.isEmpty() ? "Blank".describeConstable() : result;
+        } else return "Cancel".describeConstable();
     }
     /**
      * Prompts the user for input using a dialog box and retrieves the entered text.
@@ -377,7 +304,7 @@ public class AppBuilder extends Application {
         try {
             lines = (ArrayList<String>)
                     Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
-            println(STR."\{lines.size()} lines read");
+            println(lines.size() + " lines read");
         } catch (IOException e) {
             showMessage(e.getMessage());
         }
